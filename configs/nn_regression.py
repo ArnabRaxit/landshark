@@ -133,7 +133,8 @@ def model(mode: estimator.ModeKeys,
 
     # Compute evaluation metrics.
     mse = tf.metrics.mean_squared_error(labels=Y, predictions=phi)
-    metrics = {"mse": mse}
+    rmse= tf.metrics.root_mean_squared_error(labels=Y, predictions=phi)
+    metrics = {"mse": mse, "rmse":rmse}
 
     if mode == estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(mode, loss=loss,

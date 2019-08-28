@@ -1,0 +1,37 @@
+aws-vault exec ga-aws-sandbox  --assume-role-ttl=1h --debug  # https://github.com/FernandoMiguel/aws-vault-quick-guide
+
+for candidatefile in /home/ubuntu/landshark/con_images_bkp/; do docker run -v $HOME/landshark/con_images_bkp/:/con_images:ro -it 0627853788bd gdalinfo /con_images/$candidatefile; done;
+
+cd /home/ubuntu/landshark/con_images_bkp/; for candidatefile in *; do docker run -v $HOME/landshark/con_images_bkp/:/con_images:ro -it 0627853788bd gdalinfo /con_images/$candidatefile | egrep "(Origin)|(Pixel Size)"; done;
+
+
+landshark-import tifs --continuous con_images/ --categorical cat_images --name $name
+landshark-import targets --name sodium --shapefile ./targets/geochem_sites.shp --dtype continuous --record Cr_ppm_i_1
+landshark-extract traintest --features features_$name.hdf5 --targets targets_sodium.hdf5 --name $problem
+landshark-extract query --features features_$name.hdf5 --name $problem
+landshark train --config configs/nn_regression.py --data traintest_$problem_fold1of10
+landshark predict --config configs/nn_regression.py --checkpoint model_dnn --data query_$problem_strip1of1
+
+
+
+name=SirSam
+problem=${name}Problem
+experiment_id=exp$(date +%F-%H%M)
+mkdir ${experiment_id}
+rm features_${name}.hdf5
+rm targets_sodium.hdf5
+rm -rf traintest_${problem}_fold1of10
+rm -rf query_${problem}_strip1of1
+rm -rf nn_regression_model_1of10
+
+cd ${experiment_id}
+landshark-import tifs --continuous ../con_images/ --categorical ../cat_images --name $name
+landshark-import targets --name sodium --shapefile ../targets/geochem_sites_albers.shp --dtype continuous --record Cr_ppm_i_1
+landshark-extract traintest --features features_$name.hdf5 --targets targets_sodium.hdf5 --name $problem
+landshark-extract query --features features_$name.hdf5 --name $problem
+landshark train --config ~/landshark/configs/nn_regression.py --data traintest_${problem}_fold1of10
+landshark predict --config ~/landshark/configs/nn_regression.py --checkpoint nn_regression_model_1of10 --data query_${problem}_strip1of1
+
+
+for f in con_images/*; do newf=$(echo $f | sed  s/\\.//g | sed s/tif/.tif/g); mv $f $newf; done;
+for f in con_images/*; do newf=$(echo $f | sed  s/\\+//g ); mv $f $newf; done;
